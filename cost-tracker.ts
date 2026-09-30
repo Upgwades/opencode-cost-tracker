@@ -206,45 +206,47 @@ function wrapFetch(inner: typeof fetch): typeof fetch {
 export const CostTracker: Plugin = async ({ client }) => {
   return {
     config: async (config) => {
-      const cfg = config as { provider?: Record<string, { options?: Record<string, unknown> }> }
-      const providers = (cfg.provider ??= {})
-      const openrouter = (providers.openrouter ??= {})
-      const options = (openrouter.options ??= {})
-      const inner = typeof options.fetch === "function" ? (options.fetch as typeof fetch) : globalThis.fetch
-      options.fetch = wrapFetch(inner)
-    },
-    "chat.headers": async (input, output) => {
-      if (input.provider.info.id !== "openrouter") return
-      output.headers["X-OpenRouter-Metadata"] = "enabled"
+      try {
+        const cfg = config as { provider?: Record<string, { options?: Record<string, unknown> }> }
+        const providers = (cfg.provider ??= {})
+        const openrouter = (providers.openrouter ??= {})
+        const options = (openrouter.options ??= {})
+        const inner = typeof options.fetch === "function" ? (options.fetch as typeof fetch) : globalThis.fetch
+        options.fetch = wrapFetch(inner)
+      } catch {}
     },
     event: async ({ event }) => {
-      if (event.type !== "message.updated") return
+      try {
+        if (event?.type !== "message.updated") return
 
-      const info = event.properties.info
-      if (info.role !== "assistant") {
-        if (info.role === "user") await captureBaseline(info.sessionID, await loadState(info.sessionID))
-        return
-      }
+        const info = event.properties?.info
+        if (!info) return
 
-      const state = await loadState(info.sessionID)
-      if (state.notified[info.id]) return
+        if (info.role !== "assistant") {
+          if (info.role === "user") await captureBaseline(info.sessionID, await loadState(info.sessionID))
+          return
+        }
 
-      if (!info.time.completed) {
-        await captureBaseline(info.sessionID, state)
-        return
-      }
+        const state = await loadState(info.sessionID)
+        if (state.notified[info.id]) return
 
-      state.notified[info.id] = true
-      const capture = await takeCapture()
-      const fallback = await settle(info, state)
-      const cost = capture?.cost ?? fallback
-      state.totalCost += cost
-      if (!info.summary) {
-        state.lastCost = cost
-        state.lastModel = capture?.model ?? null
-      }
-      await saveState(info.sessionID, state)
-      if (!info.summary) await showCost(client, state)
+        if (!info.time?.completed) {
+          await captureBaseline(info.sessionID, state)
+          return
+        }
+
+        state.notified[info.id] = true
+        const capture = await takeCapture()
+        const fallback = await settle(info, state)
+        const cost = capture?.cost ?? fallback
+        state.totalCost += cost
+        if (!info.summary) {
+          state.lastCost = cost
+          state.lastModel = capture?.model ?? null
+        }
+        await saveState(info.sessionID, state)
+        if (!info.summary) await showCost(client, state)
+      } catch {}
     },
   }
 }
