@@ -1,0 +1,25 @@
+{
+  "name": "opencode-cost-tracker",
+  "version": "0.1.0",
+  "description": "opencode plugin: cost + routed-model toast for OpenRouter (auto router aware)",
+  "type": "module",
+  "main": "cost-tracker.ts",
+  "exports": {
+    ".": "./cost-tracker.ts"
+  },
+  "files": [
+    "cost-tracker.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "openrouter",
+    "cost"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  }
+}
