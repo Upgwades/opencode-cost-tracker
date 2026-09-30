@@ -2,8 +2,8 @@
 
 An [opencode](https://opencode.ai) plugin that shows a toast after each assistant turn with:
 
-- the cost of the last turn
-- the running session cost
+- the running cost of the current prompt, accumulating as the prompt's steps complete
+- the running cost of the whole session
 - the model OpenRouter's auto router actually routed to
 
 Built for `openrouter/auto`, where opencode reports `$0.00` because the auto
@@ -23,10 +23,11 @@ curl -fsSL https://raw.githubusercontent.com/Upgwades/opencode-cost-tracker/main
   -o ~/.config/opencode/plugins/cost-tracker.ts
 ```
 
-Restart opencode. After your next turn you'll see:
+Restart opencode. After your next turn you'll see the session total and the
+current prompt's total, both growing as turns complete:
 
 ```
-$0.000013 last · $1.2345 session · deepseek/deepseek-v4-flash-0731
+$1.2345 session · $0.000013 prompt · deepseek/deepseek-v4-flash-0731
 ```
 
 For a single project instead of every project, drop the file in
@@ -47,7 +48,10 @@ For a single project instead of every project, drop the file in
 ## Notes
 
 - Cost is attributed by response order; a summary/title request is consumed
-  silently so it never shows up as "last".
+  silently so it never counts toward the prompt total (it still counts toward
+  the session total).
+- The prompt total resets on each new user message and accumulates across the
+  assistant turns that message triggers.
 - The key-usage fallback measures usage across the whole API key, so a key
   shared with other apps can inflate a fallback delta.
 

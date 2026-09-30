@@ -5,8 +5,9 @@ import { join } from "node:path"
 type SessionState = {
   notified: Record<string, boolean>
   baseline: number | null
-  lastCost: number
   totalCost: number
+  promptTotal: number
+  lastPromptID: string | null
   lastModel: string | null
 }
 
@@ -28,8 +29,9 @@ const captureTtl = 120_000
 const emptyState = (): SessionState => ({
   notified: {},
   baseline: null,
-  lastCost: 0,
   totalCost: 0,
+  promptTotal: 0,
+  lastPromptID: null,
   lastModel: null,
 })
 
@@ -40,8 +42,9 @@ async function loadState(sessionID: string): Promise<SessionState> {
     return {
       notified: state.notified ?? {},
       baseline: typeof state.baseline === "number" ? state.baseline : null,
-      lastCost: Number(state.lastCost) || 0,
       totalCost: Number(state.totalCost) || 0,
+      promptTotal: Number(state.promptTotal) || 0,
+      lastPromptID: typeof state.lastPromptID === "string" ? state.lastPromptID : null,
       lastModel: typeof state.lastModel === "string" ? state.lastModel : null,
     }
   } catch {
@@ -96,7 +99,7 @@ async function showCost(client: Parameters<Plugin>[0]["client"], state: SessionS
   await client.tui.showToast({
     body: {
       title: "OpenCode cost",
-      message: `${formatCost(state.lastCost)} last · ${formatCost(state.totalCost)} session${model}`,
+      message: `${formatCost(state.totalCost)} session · ${formatCost(state.promptTotal)} prompt${model}`,
       variant: "info",
       duration: 5000,
     },
@@ -223,7 +226,15 @@ export const CostTracker: Plugin = async ({ client }) => {
         if (!info) return
 
         if (info.role !== "assistant") {
-          if (info.role === "user") await captureBaseline(info.sessionID, await loadState(info.sessionID))
+          if (info.role === "user") {
+            const state = await loadState(info.sessionID)
+            if (state.lastPromptID !== info.id) {
+              state.lastPromptID = info.id
+              state.promptTotal = 0
+              await saveState(info.sessionID, state)
+            }
+            await captureBaseline(info.sessionID, state)
+          }
           return
         }
 
@@ -241,7 +252,7 @@ export const CostTracker: Plugin = async ({ client }) => {
         const cost = capture?.cost ?? fallback
         state.totalCost += cost
         if (!info.summary) {
-          state.lastCost = cost
+          state.promptTotal += cost
           state.lastModel = capture?.model ?? null
         }
         await saveState(info.sessionID, state)

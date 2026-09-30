@@ -1,7 +1,7 @@
 {
   "name": "opencode-cost-tracker",
-  "version": "0.1.1",
-  "description": "opencode plugin: cost + routed-model toast for OpenRouter (auto router aware)",
+  "version": "0.2.0",
+  "description": "opencode plugin: session + per-prompt cost and routed-model toast for OpenRouter (auto router aware)",
   "type": "module",
   "main": "cost-tracker.ts",
   "exports": {
